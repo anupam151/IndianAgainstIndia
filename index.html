@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Against India - National Initiatives</title>
+    <link rel="stylesheet" href="css/home.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="index.html" class="logo-link">
+            <div class="logo">Indian<span>Against</span>India</div>
+        </a>
+        <a href="index.html" class="nav-home-btn">Home Dashboard</a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Indian Against India</h1>
+            <p>A transparent record of strategic infrastructure, legislation, and national security initiatives, detailing the domestic political opposition and judicial roadblocks that sought to stall India's progress.</p>
+        </div>
+
+        <div class="controls-panel">
+            <div class="search-box">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" id="searchInput" placeholder="Search by initiative title or opposition group...">
+            </div>
+            
+            <button class="btn-filter-toggle" id="filterToggleBtn">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                Advanced Filters
+            </button>
+
+            <select id="sortSelect" class="filter-select">
+                <option value="default">Default Order</option>
+                <option value="yearDesc">Year: Newest First</option>
+                <option value="yearAsc">Year: Oldest First</option>
+            </select>
+        </div>
+
+        <!-- Collapsible Multi-Select Advanced Filter Panel -->
+        <div class="advanced-filters" id="advancedFiltersPanel">
+            <div class="filters-grid">
+                <!-- Decades Checkboxes -->
+                <div class="filter-column">
+                    <h4>Filter by Decade</h4>
+                    <div class="checkbox-scroll-box" id="decadeCheckboxes">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Specific Years Checkboxes -->
+                <div class="filter-column">
+                    <h4>Filter by Year</h4>
+                    <div class="checkbox-scroll-box" id="yearCheckboxes">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Opposition Groups Checkboxes -->
+                <div class="filter-column">
+                    <h4>Filter by Opposition Group</h4>
+                    <div class="checkbox-scroll-box" id="oppositionCheckboxes">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Apply & Clear Buttons -->
+            <div class="filter-actions">
+                <button class="btn-clear" id="clearFiltersBtn">Clear All</button>
+                <button class="btn-apply" id="applyFiltersBtn">Apply Filters</button>
+            </div>
+        </div>
+
+        <!-- Dynamic Card List Container -->
+        <div class="card-list" id="cardList">
+            <div class="one-line-card" style="grid-template-columns: 1fr; text-align: center; padding: 3rem;">
+                <p style="color: var(--text-secondary); font-weight: 600;">Loading database records... (Ensure VS Code Live Server is active)</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
