@@ -122,7 +122,7 @@ function renderCards(data) {
                 <div class="card-initiative-title">${initiative}</div>
             </div>
             <div>
-                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Faced Opposition From:</div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Opposed By:</div>
                 <div class="opposition-tags-container">${tagsHtml}</div>
             </div>
             <div class="card-action-arrow" title="View Full Case File">
