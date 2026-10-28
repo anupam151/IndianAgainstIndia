@@ -3,28 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Initiative Dossier - Indian Against India</title>
+    <title>Initiative Dossier — Indian Against India</title>
+    <!-- Link to the Dossier Stylesheet -->
     <link rel="stylesheet" href="css/dossier.css">
+    <!-- SheetJS Library for parsing the Excel database -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
-    <nav class="navbar">
-        <a href="index.html" class="logo-link">
-            <div class="logo">Indian<span>Against</span>India</div>
-        </a>
-        <a href="index.html" class="nav-home-btn">Dashboard</a>
-    </nav>
 
-    <div class="container">
-        <div class="dossier-wrapper">
-            <a href="index.html" class="back-link">&larr; Return to Dashboard Ledger</a>
-            
-            <div id="dossierContainer" class="dossier-card">
-                <p style="text-align: center; color: var(--text-secondary); font-weight: 600;">Accessing comprehensive case dossier...</p>
-            </div>
+    <!-- ==========================================
+         1. STICKY HEADER & NAVIGATION BAR
+    =========================================== -->
+    <header class="site-header">
+        <div class="tricolor-ribbon">
+            <span class="band-saffron"></span>
+            <span class="band-white"></span>
+            <span class="band-green"></span>
         </div>
-    </div>
 
+        <div class="header-inner">
+            <a href="index.html" class="brand-identity">
+                <div class="brand-badge">IAI</div>
+                <div class="brand-text">
+                    <span class="brand-title">Indian<em>Against</em>India</span>
+                    <span class="brand-tagline">National Initiatives &amp; Opposition Ledger</span>
+                </div>
+            </a>
+
+            <nav class="header-nav">
+                <a href="index.html" class="nav-pill">Dashboard</a>
+                <button class="theme-switch-btn" id="themeToggleBtn" type="button" aria-label="Toggle Light/Dark Theme" title="Switch Theme">
+                    <svg id="themeIcon" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                    </svg>
+                    <span id="themeLabel" class="theme-btn-text">Dark</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ==========================================
+         2. MAIN DOSSIER WORKSPACE
+    =========================================== -->
+    <main class="workspace">
+        <!-- Back Navigation Button -->
+        <div class="Subnav-bar">
+            <a href="index.html" class="back-btn">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span>Back to Master Ledger</span>
+            </a>
+        </div>
+
+        <!-- Dynamic Dossier Article Container -->
+        <article id="dossierContainer" class="dossier-shell">
+            <div class="loading-state">
+                <p>Retrieving comprehensive case dossier...</p>
+            </div>
+        </article>
+    </main>
+
+    <!-- ==========================================
+         3. ALWAYS-DARK EXECUTIVE FOOTER
+    =========================================== -->
+    <footer class="site-footer">
+        <div class="footer-tricolor">
+            <span class="band-saffron"></span>
+            <span class="band-white"></span>
+            <span class="band-green"></span>
+        </div>
+        <div class="footer-container">
+            <div class="footer-badge">IAI</div>
+            <h2>Indian Against India</h2>
+            <p>This platform serves as a historical repository dedicated to transparency. We catalog the legal, political, and bureaucratic opposition faced by critical infrastructure and sovereign decisions.</p>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 <span>Indian Against India Documentation Project</span>. All records derived from public judicial and news archives.
+        </div>
+    </footer>
+
+    <!-- Dossier Script -->
     <script src="js/details.js"></script>
 </body>
 </html>

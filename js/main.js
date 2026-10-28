@@ -1,28 +1,79 @@
+/* ==========================================================================
+   main.js — Dashboard Controller, Multi-Filter Engine & Theme Manager
+   ========================================================================== */
+
+// ------------------------------------------
+// 1. LIGHT / DARK THEME MANAGER
+// ------------------------------------------
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const themeIcon = document.getElementById('themeIcon');
+const themeLabel = document.getElementById('themeLabel');
+
+// Apply saved theme on initial page load
+const savedTheme = localStorage.getItem('iai_theme') || 'light';
+applyThemeUI(savedTheme);
+
+function applyThemeUI(theme) {
+    if (theme === 'dark') {
+        document.body.setAttribute('data-theme', 'dark');
+        if (themeLabel) themeLabel.textContent = 'Light';
+        if (themeIcon) {
+            // Sun Icon for switching back to Light Mode
+            themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>';
+        }
+    } else {
+        document.body.removeAttribute('data-theme');
+        if (themeLabel) themeLabel.textContent = 'Dark';
+        if (themeIcon) {
+            // Moon Icon for switching to Dark Mode
+            themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
+        }
+    }
+}
+
+// Toggle theme when user clicks the header button
+themeToggleBtn.addEventListener('click', () => {
+    const isCurrentlyDark = document.body.getAttribute('data-theme') === 'dark';
+    const nextTheme = isCurrentlyDark ? 'light' : 'dark';
+    localStorage.setItem('iai_theme', nextTheme);
+    applyThemeUI(nextTheme);
+});
+
+// ------------------------------------------
+// 2. DATABASE LOADING & INITIALIZATION
+// ------------------------------------------
 let globalData = [];
 const EXCEL_FILE_PATH = 'data/India_300_National_Initiatives_History_2_2.xlsx';
 
 async function loadDatabase() {
     try {
+        // Fetch and parse the Excel spreadsheet via SheetJS
         const response = await fetch(EXCEL_FILE_PATH);
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        
-        globalData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-        globalData.forEach((row, index) => { row.id = index; });
 
+        // Convert sheet rows into JSON objects and assign stable IDs
+        globalData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+        globalData.forEach((row, index) => {
+            row.id = index;
+        });
+
+        // Build multi-select filter checkboxes and render initial cards
         populateFilterCheckboxes(globalData);
         renderCards(globalData);
+        updateDashboardStats(globalData, false);
     } catch (error) {
-        console.error("Database loading failed:", error);
+        console.error("Failed to load Excel database:", error);
         document.getElementById('cardList').innerHTML = `
-            <div class="one-line-card" style="grid-template-columns: 1fr; text-align: center;">
-                <p style="color: var(--danger); font-weight: 700;">Failed to load Excel file. Ensure 'data/India_300_National_Initiatives_History_2.xlsx' exists and Live Server is running.</p>
+            <div class="loading-state" style="color: var(--danger);">
+                Failed to load '${EXCEL_FILE_PATH}'. Please ensure the file exists and VS Code Live Server is running.
             </div>`;
     }
 }
 
-function cleanValue(val, fallback = "National Interest Decision") {
+// Helper function to sanitize cell values
+function cleanValue(val, fallback = "Unspecified") {
     if (val === undefined || val === null || val === "") return fallback;
     const str = String(val).trim();
     if (str.toUpperCase() === "NA" || str.toUpperCase() === "N/A" || str.toUpperCase() === "NONE") {
@@ -31,15 +82,53 @@ function cleanValue(val, fallback = "National Interest Decision") {
     return str;
 }
 
-// Populate multi-select checkbox lists dynamically from data
+// ------------------------------------------
+// 3. LIVE COUNTER & STATS UPDATER
+// ------------------------------------------
+function updateDashboardStats(currentData, isFiltered = false) {
+    const countEl = document.getElementById('totalRecordsCount');
+    const labelEl = document.getElementById('recordsStatLabel');
+    const subtextEl = document.getElementById('recordsFilterSubtext');
+
+    // Update the count of currently displayed initiatives (before & after filter)
+    countEl.textContent = currentData.length;
+
+    if (isFiltered) {
+        labelEl.textContent = "Filtered Initiatives";
+        subtextEl.textContent = `Showing ${currentData.length} of ${globalData.length} total records`;
+    } else {
+        labelEl.textContent = "Verified Initiatives";
+        subtextEl.textContent = `Showing all ${globalData.length} records in ledger`;
+    }
+
+    // Count distinct opposition groups across the currently displayed dataset
+    const oppSet = new Set();
+    currentData.forEach(item => {
+        const rawOpp = cleanValue(item['Who opposed'] || item['Opposed By'], '');
+        if (rawOpp && rawOpp !== 'Unspecified') {
+            rawOpp.split(',').forEach(part => {
+                const cleaned = part.trim();
+                if (cleaned) oppSet.add(cleaned);
+            });
+        }
+    });
+    document.getElementById('totalOppGroups').textContent = oppSet.size;
+}
+
+// ------------------------------------------
+// 4. POPULATE MULTI-SELECT PILL CHECKBOXES
+// ------------------------------------------
 function populateFilterCheckboxes(data) {
     const decadeBox = document.getElementById('decadeCheckboxes');
     const yearBox = document.getElementById('yearCheckboxes');
     const oppBox = document.getElementById('oppositionCheckboxes');
 
-    // 1. Years & Decades
-    const uniqueYears = [...new Set(data.map(item => String(cleanValue(item['Year'], ''))))].filter(y => y !== '' && y !== 'N/A').sort((a, b) => b - a);
-    
+    // Extract unique years and sort newest to oldest
+    const uniqueYears = [...new Set(data.map(item => String(cleanValue(item['Year'], ''))))]
+        .filter(y => y !== '' && y !== 'Unspecified')
+        .sort((a, b) => parseInt(b) - parseInt(a));
+
+    // Calculate unique decades from years
     const decadeSet = new Set();
     uniqueYears.forEach(y => {
         const yrNum = parseInt(y);
@@ -47,54 +136,60 @@ function populateFilterCheckboxes(data) {
             decadeSet.add(Math.floor(yrNum / 10) * 10);
         }
     });
-    const sortedDecades = [...decadeSet].sort((a, b) => b - a);
 
+    // Render Decade Checkboxes
     decadeBox.innerHTML = '';
-    sortedDecades.forEach(dec => {
+    [...decadeSet].sort((a, b) => b - a).forEach(dec => {
         decadeBox.innerHTML += `
-            <label class="checkbox-label">
-                <input type="checkbox" name="decade" value="${dec}"> ${dec}s (${dec} - ${dec + 9})
+            <label class="filter-pill-label">
+                <input type="checkbox" name="decade" value="${dec}">
+                <span>${dec}s</span>
             </label>`;
     });
 
+    // Render Specific Year Checkboxes
     yearBox.innerHTML = '';
     uniqueYears.forEach(year => {
         yearBox.innerHTML += `
-            <label class="checkbox-label">
-                <input type="checkbox" name="year" value="${year}"> ${year}
+            <label class="filter-pill-label">
+                <input type="checkbox" name="year" value="${year}">
+                <span>${year}</span>
             </label>`;
     });
 
-    // 2. Opposition Groups
-    let oppSet = new Set();
+    // Extract and Render Unique Opposition Groups
+    const oppSet = new Set();
     data.forEach(item => {
         const rawOpp = cleanValue(item['Who opposed'] || item['Opposed By'], '');
-        if (rawOpp && rawOpp !== 'N/A') {
+        if (rawOpp && rawOpp !== 'Unspecified') {
             rawOpp.split(',').forEach(part => {
                 const cleaned = part.trim();
                 if (cleaned) oppSet.add(cleaned);
             });
         }
     });
-    const sortedOpps = [...oppSet].sort();
 
     oppBox.innerHTML = '';
-    sortedOpps.forEach(opp => {
+    [...oppSet].sort().forEach(opp => {
         oppBox.innerHTML += `
-            <label class="checkbox-label">
-                <input type="checkbox" name="opposition" value="${opp}"> ${opp}
+            <label class="filter-pill-label">
+                <input type="checkbox" name="opposition" value="${opp}">
+                <span>${opp}</span>
             </label>`;
     });
 }
 
+// ------------------------------------------
+// 5. RENDER INITIATIVE CARDS
+// ------------------------------------------
 function renderCards(data) {
     const listContainer = document.getElementById('cardList');
-    listContainer.innerHTML = ""; 
+    listContainer.innerHTML = "";
 
     if (data.length === 0) {
         listContainer.innerHTML = `
-            <div class="one-line-card" style="grid-template-columns: 1fr; text-align: center;">
-                <p>No records found matching your filter criteria.</p>
+            <div class="loading-state">
+                No initiatives match your selected filter criteria. Click "Clear Filters" to reset.
             </div>`;
         return;
     }
@@ -104,103 +199,128 @@ function renderCards(data) {
         const initiative = cleanValue(row['What Initiative'] || row['Initiative'], "National Initiative");
         const opposedRaw = cleanValue(row['Who opposed'] || row['Opposed By'], "Opposition Groups");
 
+        // Split comma-separated opposition entities into compact pill tags
         let tagsHtml = '';
         opposedRaw.split(',').forEach(name => {
             const trimmed = name.trim();
             if (trimmed) {
-                tagsHtml += `<span class="opposition-pill">${trimmed}</span>`;
+                tagsHtml += `<span class="opp-pill">${trimmed}</span>`;
             }
         });
 
         const card = document.createElement('div');
-        card.className = 'one-line-card';
-        card.onclick = () => { window.location.href = `details.html?id=${row.id}`; };
+        card.className = 'ledger-card';
+        card.onclick = () => {
+            window.location.href = `details.html?id=${row.id}`;
+        };
 
         card.innerHTML = `
-            <div class="card-year-pill">${year}</div>
-            <div>
-                <div class="card-initiative-title">${initiative}</div>
+            <div class="card-top-meta">
+                <div class="year-badge">${year}</div>
             </div>
-            <div>
-                <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Opposed By:</div>
-                <div class="opposition-tags-container">${tagsHtml}</div>
+            <div class="card-title">${initiative}</div>
+            <div class="card-opposition-block">
+                <span class="opp-label">Opposed By:</span>
+                <div class="opp-pills-wrap">${tagsHtml}</div>
             </div>
-            <div class="card-action-arrow" title="View Full Case File">
-                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            <div class="card-arrow" title="Open Case Dossier">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+                </svg>
             </div>
         `;
+
         listContainer.appendChild(card);
     });
 }
 
-// Master filter logic triggered ONLY on clicking "Apply Filters"
+// ------------------------------------------
+// 6. APPLY & CLEAR FILTER EXECUTION ENGINE
+// ------------------------------------------
 function applyAllFilters() {
-    const query = document.getElementById('searchInput').value.toLowerCase();
+    const query = document.getElementById('searchInput').value.toLowerCase().trim();
     const sortVal = document.getElementById('sortSelect').value;
 
-    // Collect checked values
+    // Gather checked multi-select values
     const selectedDecades = [...document.querySelectorAll('input[name="decade"]:checked')].map(cb => parseInt(cb.value));
     const selectedYears = [...document.querySelectorAll('input[name="year"]:checked')].map(cb => cb.value);
     const selectedOpps = [...document.querySelectorAll('input[name="opposition"]:checked')].map(cb => cb.value.toLowerCase());
 
-    let filtered = globalData.filter(row => {
+    // Update active filter badge count on the Filters button
+    const totalSelectedFilters = selectedDecades.length + selectedYears.length + selectedOpps.length;
+    const badgeEl = document.getElementById('activeFilterBadge');
+    if (totalSelectedFilters > 0) {
+        badgeEl.style.display = 'inline-block';
+        badgeEl.textContent = totalSelectedFilters;
+    } else {
+        badgeEl.style.display = 'none';
+    }
+
+    // Filter dataset
+    const filtered = globalData.filter(row => {
         const yearStr = String(cleanValue(row['Year'], ''));
         const yearNum = parseInt(yearStr) || 0;
         const oppStr = String(cleanValue(row['Who opposed'], '')).toLowerCase();
 
-        // 1. Search Query
-        const matchesSearch = Object.values(row).some(val => String(val).toLowerCase().includes(query));
+        // 1. Search bar match
+        const matchesSearch = query === "" || Object.values(row).some(val => String(val).toLowerCase().includes(query));
 
-        // 2. Multi-Decade Check (OR logic among selected)
-        let matchesDecade = true;
-        if (selectedDecades.length > 0) {
-            matchesDecade = selectedDecades.some(dec => yearNum >= dec && yearNum <= dec + 9);
-        }
+        // 2. Multi-Decade match
+        const matchesDecade = selectedDecades.length === 0 || selectedDecades.some(dec => yearNum >= dec && yearNum <= dec + 9);
 
-        // 3. Multi-Year Check (OR logic among selected)
-        let matchesYear = true;
-        if (selectedYears.length > 0) {
-            matchesYear = selectedYears.includes(yearStr);
-        }
+        // 3. Multi-Year match
+        const matchesYear = selectedYears.length === 0 || selectedYears.includes(yearStr);
 
-        // 4. Multi-Opposition Check (OR logic among selected)
-        let matchesOpp = true;
-        if (selectedOpps.length > 0) {
-            matchesOpp = selectedOpps.some(op => oppStr.includes(op));
-        }
+        // 4. Multi-Opposition match
+        const matchesOpp = selectedOpps.length === 0 || selectedOpps.some(op => oppStr.includes(op));
 
         return matchesSearch && matchesDecade && matchesYear && matchesOpp;
     });
 
-    // Sorting
+    // Apply chronological sorting
     if (sortVal === 'yearAsc') {
-        filtered.sort((a, b) => parseInt(cleanValue(a['Year'], 0)) - parseInt(cleanValue(b['Year'], 0)));
+        filtered.sort((a, b) => (parseInt(cleanValue(a['Year'], 0)) || 0) - (parseInt(cleanValue(b['Year'], 0)) || 0));
     } else if (sortVal === 'yearDesc') {
-        filtered.sort((a, b) => parseInt(cleanValue(b['Year'], 0)) - parseInt(cleanValue(a['Year'], 0)));
+        filtered.sort((a, b) => (parseInt(cleanValue(b['Year'], 0)) || 0) - (parseInt(cleanValue(a['Year'], 0)) || 0));
     }
 
-    renderCards(filtered);
+    // Check if any filter or search is currently active
+    const isCurrentlyFiltered = query !== "" || totalSelectedFilters > 0;
 
-    // Collapse panel after applying
+    // Render updated cards and update live counters
+    renderCards(filtered);
+    updateDashboardStats(filtered, isCurrentlyFiltered);
+
+    // Automatically collapse the filter drawer once Apply is clicked
     document.getElementById('advancedFiltersPanel').classList.remove('active');
+    document.getElementById('filterToggleBtn').classList.remove('active');
 }
 
-// Clear all filters
 function clearAllFilters() {
-    document.querySelectorAll('.advanced-filters input[type="checkbox"]').forEach(cb => cb.checked = false);
+    // Uncheck all checkboxes and clear search input
+    document.querySelectorAll('#advancedFiltersPanel input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+    });
     document.getElementById('searchInput').value = '';
+    document.getElementById('sortSelect').value = 'default';
     applyAllFilters();
 }
 
-// Event Listeners
-document.getElementById('filterToggleBtn').addEventListener('click', () => {
-    const panel = document.getElementById('advancedFiltersPanel');
-    panel.classList.toggle('active');
+// ------------------------------------------
+// 7. EVENT LISTENERS
+// ------------------------------------------
+document.getElementById('filterToggleBtn').addEventListener('click', (e) => {
+    e.currentTarget.classList.toggle('active');
+    document.getElementById('advancedFiltersPanel').classList.toggle('active');
 });
 
+// Checkboxes only apply when clicking "Apply Filters"
 document.getElementById('applyFiltersBtn').addEventListener('click', applyAllFilters);
 document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
-document.getElementById('searchInput').addEventListener('input', applyAllFilters); // Search remains real-time
+
+// Search bar and Sort dropdown trigger live updates
+document.getElementById('searchInput').addEventListener('input', applyAllFilters);
 document.getElementById('sortSelect').addEventListener('change', applyAllFilters);
 
+// Initialize application
 loadDatabase();
