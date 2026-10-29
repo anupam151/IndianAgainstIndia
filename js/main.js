@@ -43,7 +43,7 @@ themeToggleBtn.addEventListener('click', () => {
 // 2. DATABASE LOADING & INITIALIZATION
 // ------------------------------------------
 let globalData = [];
-const EXCEL_FILE_PATH = 'data/India_300_National_Initiatives_History_2_2.xlsx';
+const EXCEL_FILE_PATH = 'data/data.xlsm';
 
 async function loadDatabase() {
     try {
