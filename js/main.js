@@ -43,7 +43,7 @@ themeToggleBtn.addEventListener('click', () => {
 // 2. DATABASE LOADING & INITIALIZATION
 // ------------------------------------------
 let globalData = [];
-const EXCEL_FILE_PATH = 'data/data.xlsm';
+const EXCEL_FILE_PATH = 'data/data.xlsx';
 
 async function loadDatabase() {
     try {
@@ -58,6 +58,9 @@ async function loadDatabase() {
         globalData.forEach((row, index) => {
             row.id = index;
         });
+
+        // FORCE DEFAULT SORT: Sort globalData immediately by Year descending (Newest First)
+        globalData.sort((a, b) => (parseInt(cleanValue(b['Year'], 0)) || 0) - (parseInt(cleanValue(a['Year'], 0)) || 0));
 
         // Build multi-select filter checkboxes and render initial cards
         populateFilterCheckboxes(globalData);
@@ -277,10 +280,12 @@ function applyAllFilters() {
         return matchesSearch && matchesDecade && matchesYear && matchesOpp;
     });
 
-    // Apply chronological sorting
+    // Apply chronological sorting (Default and 'yearDesc' both sort Newest First)
     if (sortVal === 'yearAsc') {
+        // Sort oldest first (Ascending)
         filtered.sort((a, b) => (parseInt(cleanValue(a['Year'], 0)) || 0) - (parseInt(cleanValue(b['Year'], 0)) || 0));
-    } else if (sortVal === 'yearDesc') {
+    } else {
+        // Default ('default') or 'yearDesc': Sort newest first (Descending)
         filtered.sort((a, b) => (parseInt(cleanValue(b['Year'], 0)) || 0) - (parseInt(cleanValue(a['Year'], 0)) || 0));
     }
 
