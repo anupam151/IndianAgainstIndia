@@ -53,11 +53,8 @@ async function loadDatabase() {
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
-        // Convert sheet rows into JSON objects and assign stable IDs
+        // Convert sheet rows into JSON objects
         globalData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-        globalData.forEach((row, index) => {
-            row.id = index;
-        });
 
         // FORCE DEFAULT SORT: Sort globalData immediately by Year descending (Newest First)
         globalData.sort((a, b) => (parseInt(cleanValue(b['Year'], 0)) || 0) - (parseInt(cleanValue(a['Year'], 0)) || 0));
@@ -70,7 +67,7 @@ async function loadDatabase() {
         console.error("Failed to load Excel database:", error);
         document.getElementById('cardList').innerHTML = `
             <div class="loading-state" style="color: var(--danger);">
-                Failed to load '${EXCEL_FILE_PATH}'. Please ensure the file exists and VS Code Live Server is running.
+                Failed to load database. Ensure Live Server is active and Excel path is correct.
             </div>`;
     }
 }
@@ -93,7 +90,6 @@ function updateDashboardStats(currentData, isFiltered = false) {
     const labelEl = document.getElementById('recordsStatLabel');
     const subtextEl = document.getElementById('recordsFilterSubtext');
 
-    // Update the count of currently displayed initiatives (before & after filter)
     countEl.textContent = currentData.length;
 
     if (isFiltered) {
@@ -104,7 +100,6 @@ function updateDashboardStats(currentData, isFiltered = false) {
         subtextEl.textContent = `Showing all ${globalData.length} records in ledger`;
     }
 
-    // Count distinct opposition groups across the currently displayed dataset
     const oppSet = new Set();
     currentData.forEach(item => {
         const rawOpp = cleanValue(item['Who opposed'] || item['Opposed By'], '');
@@ -126,12 +121,10 @@ function populateFilterCheckboxes(data) {
     const yearBox = document.getElementById('yearCheckboxes');
     const oppBox = document.getElementById('oppositionCheckboxes');
 
-    // Extract unique years and sort newest to oldest
     const uniqueYears = [...new Set(data.map(item => String(cleanValue(item['Year'], ''))))]
         .filter(y => y !== '' && y !== 'Unspecified')
         .sort((a, b) => parseInt(b) - parseInt(a));
 
-    // Calculate unique decades from years
     const decadeSet = new Set();
     uniqueYears.forEach(y => {
         const yrNum = parseInt(y);
@@ -140,7 +133,6 @@ function populateFilterCheckboxes(data) {
         }
     });
 
-    // Render Decade Checkboxes
     decadeBox.innerHTML = '';
     [...decadeSet].sort((a, b) => b - a).forEach(dec => {
         decadeBox.innerHTML += `
@@ -150,7 +142,6 @@ function populateFilterCheckboxes(data) {
             </label>`;
     });
 
-    // Render Specific Year Checkboxes
     yearBox.innerHTML = '';
     uniqueYears.forEach(year => {
         yearBox.innerHTML += `
@@ -160,7 +151,6 @@ function populateFilterCheckboxes(data) {
             </label>`;
     });
 
-    // Extract and Render Unique Opposition Groups
     const oppSet = new Set();
     data.forEach(item => {
         const rawOpp = cleanValue(item['Who opposed'] || item['Opposed By'], '');
@@ -183,7 +173,7 @@ function populateFilterCheckboxes(data) {
 }
 
 // ------------------------------------------
-// 5. RENDER INITIATIVE CARDS
+// 5. RENDER INITIATIVE CARDS (Using Initiative Name in URL)
 // ------------------------------------------
 function renderCards(data) {
     const listContainer = document.getElementById('cardList');
@@ -202,7 +192,6 @@ function renderCards(data) {
         const initiative = cleanValue(row['What Initiative'] || row['Initiative'], "National Initiative");
         const opposedRaw = cleanValue(row['Who opposed'] || row['Opposed By'], "Opposition Groups");
 
-        // Split comma-separated opposition entities into compact pill tags
         let tagsHtml = '';
         opposedRaw.split(',').forEach(name => {
             const trimmed = name.trim();
@@ -213,8 +202,11 @@ function renderCards(data) {
 
         const card = document.createElement('div');
         card.className = 'ledger-card';
+        
+        // Pass the "What Initiative" text encoded into the URL query parameter (Row-reordering safe)
         card.onclick = () => {
-            window.location.href = `details.html?id=${row.id}`;
+            const encodedName = encodeURIComponent(initiative);
+            window.location.href = `details.html?id=${encodedName}`;
         };
 
         card.innerHTML = `
@@ -244,12 +236,10 @@ function applyAllFilters() {
     const query = document.getElementById('searchInput').value.toLowerCase().trim();
     const sortVal = document.getElementById('sortSelect').value;
 
-    // Gather checked multi-select values
     const selectedDecades = [...document.querySelectorAll('input[name="decade"]:checked')].map(cb => parseInt(cb.value));
     const selectedYears = [...document.querySelectorAll('input[name="year"]:checked')].map(cb => cb.value);
     const selectedOpps = [...document.querySelectorAll('input[name="opposition"]:checked')].map(cb => cb.value.toLowerCase());
 
-    // Update active filter badge count on the Filters button
     const totalSelectedFilters = selectedDecades.length + selectedYears.length + selectedOpps.length;
     const badgeEl = document.getElementById('activeFilterBadge');
     if (totalSelectedFilters > 0) {
@@ -259,50 +249,35 @@ function applyAllFilters() {
         badgeEl.style.display = 'none';
     }
 
-    // Filter dataset
     const filtered = globalData.filter(row => {
         const yearStr = String(cleanValue(row['Year'], ''));
         const yearNum = parseInt(yearStr) || 0;
         const oppStr = String(cleanValue(row['Who opposed'], '')).toLowerCase();
 
-        // 1. Search bar match
         const matchesSearch = query === "" || Object.values(row).some(val => String(val).toLowerCase().includes(query));
-
-        // 2. Multi-Decade match
         const matchesDecade = selectedDecades.length === 0 || selectedDecades.some(dec => yearNum >= dec && yearNum <= dec + 9);
-
-        // 3. Multi-Year match
         const matchesYear = selectedYears.length === 0 || selectedYears.includes(yearStr);
-
-        // 4. Multi-Opposition match
         const matchesOpp = selectedOpps.length === 0 || selectedOpps.some(op => oppStr.includes(op));
 
         return matchesSearch && matchesDecade && matchesYear && matchesOpp;
     });
 
-    // Apply chronological sorting (Default and 'yearDesc' both sort Newest First)
     if (sortVal === 'yearAsc') {
-        // Sort oldest first (Ascending)
         filtered.sort((a, b) => (parseInt(cleanValue(a['Year'], 0)) || 0) - (parseInt(cleanValue(b['Year'], 0)) || 0));
     } else {
-        // Default ('default') or 'yearDesc': Sort newest first (Descending)
         filtered.sort((a, b) => (parseInt(cleanValue(b['Year'], 0)) || 0) - (parseInt(cleanValue(a['Year'], 0)) || 0));
     }
 
-    // Check if any filter or search is currently active
     const isCurrentlyFiltered = query !== "" || totalSelectedFilters > 0;
 
-    // Render updated cards and update live counters
     renderCards(filtered);
     updateDashboardStats(filtered, isCurrentlyFiltered);
 
-    // Automatically collapse the filter drawer once Apply is clicked
     document.getElementById('advancedFiltersPanel').classList.remove('active');
     document.getElementById('filterToggleBtn').classList.remove('active');
 }
 
 function clearAllFilters() {
-    // Uncheck all checkboxes and clear search input
     document.querySelectorAll('#advancedFiltersPanel input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
     });
@@ -319,13 +294,9 @@ document.getElementById('filterToggleBtn').addEventListener('click', (e) => {
     document.getElementById('advancedFiltersPanel').classList.toggle('active');
 });
 
-// Checkboxes only apply when clicking "Apply Filters"
 document.getElementById('applyFiltersBtn').addEventListener('click', applyAllFilters);
 document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
-
-// Search bar and Sort dropdown trigger live updates
 document.getElementById('searchInput').addEventListener('input', applyAllFilters);
 document.getElementById('sortSelect').addEventListener('change', applyAllFilters);
 
-// Initialize application
 loadDatabase();

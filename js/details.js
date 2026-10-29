@@ -1,5 +1,5 @@
 /* ==========================================================================
-   details.js — Case Dossier Controller & Theme Manager
+   details.js — Case Dossier Controller & Initiative Name Lookup Engine
    ========================================================================== */
 
 // ------------------------------------------
@@ -36,7 +36,7 @@ themeToggleBtn.addEventListener('click', () => {
 });
 
 // ------------------------------------------
-// 2. DOSSIER DATA LOADER & RENDERER
+// 2. DOSSIER DATA LOADER & NAME LOOKUP
 // ------------------------------------------
 const EXCEL_FILE_PATH = 'data/Data.xlsx';
 
@@ -50,28 +50,34 @@ function cleanValue(val, fallback = "Not Specified") {
 }
 
 async function loadDossier() {
-    const idParam = new URLSearchParams(window.location.search).get('id');
+    const rawIdParam = new URLSearchParams(window.location.search).get('id');
     const container = document.getElementById('dossierContainer');
 
-    if (idParam === null) {
-        container.innerHTML = `<div class="loading-state">No case file ID specified.</div>`;
+    if (!rawIdParam) {
+        container.innerHTML = `<div class="loading-state">No case file specified in URL.</div>`;
         return;
     }
 
+    // Decode the initiative name passed in the URL query string
+    const targetInitiativeName = decodeURIComponent(rawIdParam).trim().toLowerCase();
+
     try {
-        // Fetch and parse the Excel database
         const response = await fetch(EXCEL_FILE_PATH);
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
 
-        const row = data[parseInt(idParam)];
+        // Search dataset for row where "What Initiative" matches the URL parameter
+        const row = data.find(item => {
+            const currentInitiative = cleanValue(item['What Initiative'] || item['Initiative'], '').toLowerCase();
+            return currentInitiative === targetInitiativeName;
+        });
+
         if (!row) {
-            container.innerHTML = `<div class="loading-state">Record not found in database.</div>`;
+            container.innerHTML = `<div class="loading-state">Record matching "${decodeURIComponent(rawIdParam)}" not found in database.</div>`;
             return;
         }
 
-        // Extract fields from the row
         const initiative = cleanValue(row['What Initiative'], 'Strategic National Initiative');
         const year = cleanValue(row['Year'], 'N/A');
         const delay = cleanValue(row['Delay'], 'N/A');
@@ -81,10 +87,9 @@ async function loadDossier() {
         const importance = cleanValue(row['Why important for India'], 'Detailed strategic importance analysis not available.');
         const effect = cleanValue(row['Effect on India for the delay'], 'Detailed macroeconomic and national security effect analysis not available.');
 
-        // Build the Dossier HTML layout
         let html = `
             <div class="dossier-banner">
-                <div class="dossier-eyebrow">Case File #${parseInt(idParam) + 1}</div>
+                <div class="dossier-eyebrow">Verified Intelligence Dossier</div>
                 <h1 class="dossier-title">${initiative}</h1>
                 
                 <div class="dossier-meta-grid">
@@ -152,7 +157,6 @@ async function loadDossier() {
                 <div class="doc-links-grid">
         `;
 
-        // Render up to 4 proof links dynamically
         [1, 2, 3, 4].forEach(num => {
             const link = cleanValue(row[`Proof Link ${num}`], "");
             if (link && link !== "Not Specified") {
@@ -170,8 +174,8 @@ async function loadDossier() {
         container.innerHTML = html;
 
     } catch (error) {
-        console.error("Error loading dossier:", error);
-        container.innerHTML = `<div class="loading-state" style="color: var(--danger);">Error loading case file dossier. Ensure VS Code Live Server is running.</div>`;
+        console.error("Error loading dossier by name:", error);
+        container.innerHTML = `<div class="loading-state" style="color: var(--danger);">Error loading case file dossier. Ensure Live Server is running.</div>`;
     }
 }
 
