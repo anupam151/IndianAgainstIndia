@@ -43,7 +43,7 @@ themeToggleBtn.addEventListener('click', () => {
 // 2. DATABASE LOADING & INITIALIZATION
 // ------------------------------------------
 let globalData = [];
-const EXCEL_FILE_PATH = 'data/data.xlsx';
+const EXCEL_FILE_PATH = 'data/Data.xlsx';
 
 async function loadDatabase() {
     try {

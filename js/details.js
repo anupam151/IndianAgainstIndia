@@ -38,7 +38,7 @@ themeToggleBtn.addEventListener('click', () => {
 // ------------------------------------------
 // 2. DOSSIER DATA LOADER & RENDERER
 // ------------------------------------------
-const EXCEL_FILE_PATH = 'data/data.xlsx';
+const EXCEL_FILE_PATH = 'data/Data.xlsx';
 
 function cleanValue(val, fallback = "Not Specified") {
     if (val === undefined || val === null || val === "") return fallback;
