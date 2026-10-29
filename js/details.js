@@ -1,5 +1,5 @@
 /* ==========================================================================
-   details.js — Case Dossier Controller & Initiative Name Lookup Engine
+   details.js — Case Dossier Controller, Name Lookup & Share Engine
    ========================================================================== */
 
 // ------------------------------------------
@@ -28,15 +28,44 @@ function applyThemeUI(theme) {
     }
 }
 
-themeToggleBtn.addEventListener('click', () => {
-    const isCurrentlyDark = document.body.getAttribute('data-theme') === 'dark';
-    const nextTheme = isCurrentlyDark ? 'light' : 'dark';
-    localStorage.setItem('iai_theme', nextTheme);
-    applyThemeUI(nextTheme);
-});
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        const isCurrentlyDark = document.body.getAttribute('data-theme') === 'dark';
+        const nextTheme = isCurrentlyDark ? 'light' : 'dark';
+        localStorage.setItem('iai_theme', nextTheme);
+        applyThemeUI(nextTheme);
+    });
+}
 
 // ------------------------------------------
-// 2. DOSSIER DATA LOADER & NAME LOOKUP
+// 2. SHARE BUTTON HANDLER (WhatsApp / Web Share API)
+// ------------------------------------------
+const headerShareBtn = document.getElementById('headerShareBtn');
+if (headerShareBtn) {
+    headerShareBtn.addEventListener('click', async () => {
+        const shareData = {
+            title: document.title,
+            text: 'Check out this intelligence dossier on Indian Against India:',
+            url: window.location.href
+        };
+
+        try {
+            if (navigator.share) {
+                // Opens mobile native share sheet (WhatsApp, Telegram, SMS, etc.)
+                await navigator.share(shareData);
+            } else {
+                // Desktop fallback: copy link directly to clipboard
+                await navigator.clipboard.writeText(window.location.href);
+                alert('Dossier link copied to clipboard!');
+            }
+        } catch (err) {
+            console.log('Sharing canceled or failed:', err);
+        }
+    });
+}
+
+// ------------------------------------------
+// 3. DOSSIER DATA LOADER & NAME LOOKUP
 // ------------------------------------------
 const EXCEL_FILE_PATH = 'data/Data.xlsx';
 
@@ -52,6 +81,8 @@ function cleanValue(val, fallback = "Not Specified") {
 async function loadDossier() {
     const rawIdParam = new URLSearchParams(window.location.search).get('id');
     const container = document.getElementById('dossierContainer');
+
+    if (!container) return;
 
     if (!rawIdParam) {
         container.innerHTML = `<div class="loading-state">No case file specified in URL.</div>`;

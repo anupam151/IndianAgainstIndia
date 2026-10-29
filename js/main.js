@@ -32,12 +32,14 @@ function applyThemeUI(theme) {
 }
 
 // Toggle theme when user clicks the header button
-themeToggleBtn.addEventListener('click', () => {
-    const isCurrentlyDark = document.body.getAttribute('data-theme') === 'dark';
-    const nextTheme = isCurrentlyDark ? 'light' : 'dark';
-    localStorage.setItem('iai_theme', nextTheme);
-    applyThemeUI(nextTheme);
-});
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        const isCurrentlyDark = document.body.getAttribute('data-theme') === 'dark';
+        const nextTheme = isCurrentlyDark ? 'light' : 'dark';
+        localStorage.setItem('iai_theme', nextTheme);
+        applyThemeUI(nextTheme);
+    });
+}
 
 // ------------------------------------------
 // 2. DATABASE LOADING & INITIALIZATION
@@ -90,14 +92,14 @@ function updateDashboardStats(currentData, isFiltered = false) {
     const labelEl = document.getElementById('recordsStatLabel');
     const subtextEl = document.getElementById('recordsFilterSubtext');
 
-    countEl.textContent = currentData.length;
+    if (countEl) countEl.textContent = currentData.length;
 
     if (isFiltered) {
-        labelEl.textContent = "Filtered Initiatives";
-        subtextEl.textContent = `Showing ${currentData.length} of ${globalData.length} total records`;
+        if (labelEl) labelEl.textContent = "Filtered Initiatives";
+        if (subtextEl) subtextEl.textContent = `Showing ${currentData.length} of ${globalData.length} total records`;
     } else {
-        labelEl.textContent = "Verified Initiatives";
-        subtextEl.textContent = `Showing all ${globalData.length} records in ledger`;
+        if (labelEl) labelEl.textContent = "Verified Initiatives";
+        if (subtextEl) subtextEl.textContent = `Showing all ${globalData.length} records in ledger`;
     }
 
     const oppSet = new Set();
@@ -110,7 +112,8 @@ function updateDashboardStats(currentData, isFiltered = false) {
             });
         }
     });
-    document.getElementById('totalOppGroups').textContent = oppSet.size;
+    const oppCountEl = document.getElementById('totalOppGroups');
+    if (oppCountEl) oppCountEl.textContent = oppSet.size;
 }
 
 // ------------------------------------------
@@ -133,23 +136,27 @@ function populateFilterCheckboxes(data) {
         }
     });
 
-    decadeBox.innerHTML = '';
-    [...decadeSet].sort((a, b) => b - a).forEach(dec => {
-        decadeBox.innerHTML += `
-            <label class="filter-pill-label">
-                <input type="checkbox" name="decade" value="${dec}">
-                <span>${dec}s</span>
-            </label>`;
-    });
+    if (decadeBox) {
+        decadeBox.innerHTML = '';
+        [...decadeSet].sort((a, b) => b - a).forEach(dec => {
+            decadeBox.innerHTML += `
+                <label class="filter-pill-label">
+                    <input type="checkbox" name="decade" value="${dec}">
+                    <span>${dec}s</span>
+                </label>`;
+        });
+    }
 
-    yearBox.innerHTML = '';
-    uniqueYears.forEach(year => {
-        yearBox.innerHTML += `
-            <label class="filter-pill-label">
-                <input type="checkbox" name="year" value="${year}">
-                <span>${year}</span>
-            </label>`;
-    });
+    if (yearBox) {
+        yearBox.innerHTML = '';
+        uniqueYears.forEach(year => {
+            yearBox.innerHTML += `
+                <label class="filter-pill-label">
+                    <input type="checkbox" name="year" value="${year}">
+                    <span>${year}</span>
+                </label>`;
+        });
+    }
 
     const oppSet = new Set();
     data.forEach(item => {
@@ -162,14 +169,16 @@ function populateFilterCheckboxes(data) {
         }
     });
 
-    oppBox.innerHTML = '';
-    [...oppSet].sort().forEach(opp => {
-        oppBox.innerHTML += `
-            <label class="filter-pill-label">
-                <input type="checkbox" name="opposition" value="${opp}">
-                <span>${opp}</span>
-            </label>`;
-    });
+    if (oppBox) {
+        oppBox.innerHTML = '';
+        [...oppSet].sort().forEach(opp => {
+            oppBox.innerHTML += `
+                <label class="filter-pill-label">
+                    <input type="checkbox" name="opposition" value="${opp}">
+                    <span>${opp}</span>
+                </label>`;
+        });
+    }
 }
 
 // ------------------------------------------
@@ -177,6 +186,7 @@ function populateFilterCheckboxes(data) {
 // ------------------------------------------
 function renderCards(data) {
     const listContainer = document.getElementById('cardList');
+    if (!listContainer) return;
     listContainer.innerHTML = "";
 
     if (data.length === 0) {
@@ -233,8 +243,11 @@ function renderCards(data) {
 // 6. APPLY & CLEAR FILTER EXECUTION ENGINE
 // ------------------------------------------
 function applyAllFilters() {
-    const query = document.getElementById('searchInput').value.toLowerCase().trim();
-    const sortVal = document.getElementById('sortSelect').value;
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const sortVal = sortSelect ? sortSelect.value : "default";
 
     const selectedDecades = [...document.querySelectorAll('input[name="decade"]:checked')].map(cb => parseInt(cb.value));
     const selectedYears = [...document.querySelectorAll('input[name="year"]:checked')].map(cb => cb.value);
@@ -242,11 +255,13 @@ function applyAllFilters() {
 
     const totalSelectedFilters = selectedDecades.length + selectedYears.length + selectedOpps.length;
     const badgeEl = document.getElementById('activeFilterBadge');
-    if (totalSelectedFilters > 0) {
-        badgeEl.style.display = 'inline-block';
-        badgeEl.textContent = totalSelectedFilters;
-    } else {
-        badgeEl.style.display = 'none';
+    if (badgeEl) {
+        if (totalSelectedFilters > 0) {
+            badgeEl.style.display = 'inline-block';
+            badgeEl.textContent = totalSelectedFilters;
+        } else {
+            badgeEl.style.display = 'none';
+        }
     }
 
     const filtered = globalData.filter(row => {
@@ -273,30 +288,46 @@ function applyAllFilters() {
     renderCards(filtered);
     updateDashboardStats(filtered, isCurrentlyFiltered);
 
-    document.getElementById('advancedFiltersPanel').classList.remove('active');
-    document.getElementById('filterToggleBtn').classList.remove('active');
+    const filterPanel = document.getElementById('advancedFiltersPanel');
+    const filterToggle = document.getElementById('filterToggleBtn');
+    if (filterPanel) filterPanel.classList.remove('active');
+    if (filterToggle) filterToggle.classList.remove('active');
 }
 
 function clearAllFilters() {
     document.querySelectorAll('#advancedFiltersPanel input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
     });
-    document.getElementById('searchInput').value = '';
-    document.getElementById('sortSelect').value = 'default';
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    if (searchInput) searchInput.value = '';
+    if (sortSelect) sortSelect.value = 'default';
     applyAllFilters();
 }
 
 // ------------------------------------------
 // 7. EVENT LISTENERS
 // ------------------------------------------
-document.getElementById('filterToggleBtn').addEventListener('click', (e) => {
-    e.currentTarget.classList.toggle('active');
-    document.getElementById('advancedFiltersPanel').classList.toggle('active');
-});
+const filterToggleBtn = document.getElementById('filterToggleBtn');
+if (filterToggleBtn) {
+    filterToggleBtn.addEventListener('click', (e) => {
+        e.currentTarget.classList.toggle('active');
+        const filterPanel = document.getElementById('advancedFiltersPanel');
+        if (filterPanel) filterPanel.classList.toggle('active');
+    });
+}
 
-document.getElementById('applyFiltersBtn').addEventListener('click', applyAllFilters);
-document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
-document.getElementById('searchInput').addEventListener('input', applyAllFilters);
-document.getElementById('sortSelect').addEventListener('change', applyAllFilters);
+const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+if (applyFiltersBtn) applyFiltersBtn.addEventListener('click', applyAllFilters);
 
+const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearAllFilters);
+
+const searchInput = document.getElementById('searchInput');
+if (searchInput) searchInput.addEventListener('input', applyAllFilters);
+
+const sortSelect = document.getElementById('sortSelect');
+if (sortSelect) sortSelect.addEventListener('change', applyAllFilters);
+
+// Initialize application
 loadDatabase();
